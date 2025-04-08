@@ -1,16 +1,14 @@
 name: Azure Naming Tool - Build and deploy to an Azure Web App
 env:
-  DOTNET_VERSION: '8.0.x'               # .NET Core version to use
+  DOTNET_VERSION: '8.0.x'
 on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
   
-defaults:
-  run:
-    working-directory: src
 permissions:
   contents: read
+  id-token: write # This is required for requesting the JWT token
                   
 jobs:
   check-secrets:
@@ -26,7 +24,6 @@ jobs:
           azure_client_secret: ${{ secrets.AZURE_CLIENT_SECRET }}
           azure_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           azure_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
-        # Check that all required secrets exist
         if: (env.azure_webapp_name != null && env.azure_client_id != null && env.azure_client_secret != null && env.azure_subscription_id != null && env.azure_tenant_id != null)
         run: echo 'isvalid=true' >> $GITHUB_OUTPUT
           
@@ -51,10 +48,10 @@ jobs:
             ${{ runner.os }}-nuget-
       
       - name: Build with dotnet
-        run: dotnet build --configuration Release
+        run: dotnet build src --configuration Release
       
       - name: dotnet publish
-        run: dotnet publish -c Release -o ${{github.workspace}}/publish
+        run: dotnet publish src -c Release -o ${{github.workspace}}/publish
       
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4.4.3
@@ -64,7 +61,8 @@ jobs:
   
   deploy: 
     permissions:
-      contents: none
+      contents: read
+      id-token: write # Needed for OIDC authentication
     runs-on: ubuntu-latest
     needs: [build, check-secrets]
     if: needs.check-secrets.outputs.secrets-valid == 'true'
@@ -78,13 +76,14 @@ jobs:
           name: .net-app
           path: ${{github.workspace}}/publish
       
-      - name: Azure Login Using Service Principal
-        uses: azure/login@v2
+      - name: Azure Login
+        uses: azure/login@v1.4.6
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          enable-AzPSSession: false
           
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
