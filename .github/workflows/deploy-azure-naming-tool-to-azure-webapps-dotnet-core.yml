@@ -21,10 +21,10 @@ jobs:
         env: 
           azure_webapp_name: ${{ secrets.AZURE_WEBAPP_NAME }}
           azure_client_id: ${{ secrets.AZURE_CLIENT_ID }}
-          azure_client_secret: ${{ secrets.AZURE_CLIENT_SECRET }}
           azure_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           azure_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
-        if: (env.azure_webapp_name != null && env.azure_client_id != null && env.azure_client_secret != null && env.azure_subscription_id != null && env.azure_tenant_id != null)
+        # Client secret no longer needed with federated credentials
+        if: (env.azure_webapp_name != null && env.azure_client_id != null && env.azure_subscription_id != null && env.azure_tenant_id != null)
         run: echo 'isvalid=true' >> $GITHUB_OUTPUT
           
   build:
@@ -77,13 +77,12 @@ jobs:
           path: ${{github.workspace}}/publish
       
       - name: Azure Login
-        uses: azure/login@v1.4.6
+        uses: azure/login@v1
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-          enable-AzPSSession: false
+          # Removed client-secret as we're using federated credentials
           
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
