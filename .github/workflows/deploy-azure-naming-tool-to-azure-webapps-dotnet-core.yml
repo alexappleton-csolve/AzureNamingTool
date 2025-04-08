@@ -23,7 +23,6 @@ jobs:
           azure_client_id: ${{ secrets.AZURE_CLIENT_ID }}
           azure_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           azure_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
-        # Client secret no longer needed with federated credentials
         if: (env.azure_webapp_name != null && env.azure_client_id != null && env.azure_subscription_id != null && env.azure_tenant_id != null)
         run: echo 'isvalid=true' >> $GITHUB_OUTPUT
           
@@ -66,9 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build, check-secrets]
     if: needs.check-secrets.outputs.secrets-valid == 'true'
-    environment:
-      name: 'Development'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+    # Remove the environment block since we're using branch-based federation
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4.1.8
@@ -82,7 +79,6 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          # Removed client-secret as we're using federated credentials
           
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
